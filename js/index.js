@@ -6,6 +6,32 @@ function getClickPos(e) {
     return { x, y };
 }
 
+function hex2Hex0x(hex) {
+    return "0x" + hex.slice(1, hex.length);
+}
+
+function rgba2hex(orig) {
+    let a,
+        rgb = orig.replace(/\s/g, "").match(/^rgba?\((\d+),(\d+),(\d+),?([^,\s)]+)?/i),
+        alpha = ((rgb && rgb[4]) || "").trim(),
+        hex = rgb
+            ? (rgb[1] | (1 << 8)).toString(16).slice(1) +
+              (rgb[2] | (1 << 8)).toString(16).slice(1) +
+              (rgb[3] | (1 << 8)).toString(16).slice(1)
+            : orig;
+
+    if (alpha !== "") {
+        a = alpha;
+    } else {
+        a = 01;
+    }
+    // multiply before convert to HEX
+    a = ((a * 255) | (1 << 8)).toString(16).slice(1);
+    hex = hex + a;
+
+    return hex.substring(0, 1) + "x" + hex.substring(index + 2);
+}
+
 const renderer = document.createElement("canvas");
 renderer.width = 800;
 renderer.height = 600;
@@ -221,6 +247,45 @@ class PixiDrawing {
         return this;
     }
 
+    drawRect(
+        x,
+        y,
+        width = 50,
+        height = 50,
+        color = "#ff0000",
+        empty = false,
+        stroke = false,
+        strokeColor = "#00ff00",
+        strokeWidth = 4
+    ) {
+        if (typeof color === "string") {
+            if (color[0] === "#") {
+                color = hex2Hex0x(color);
+            }
+            if (color.includes("rgb")) {
+                color = rgba2hex(color);
+            }
+        }
+        if (typeof strokeColor === "string") {
+            if (strokeColor[0] === "#") {
+                strokeColor = hex2Hex0x(strokeColor);
+            }
+            if (strokeColor.includes("rgb")) {
+                strokeColor = rgba2hex(strokeColor);
+            }
+        }
+        const rectangle = new PIXI.Graphics();
+        stroke && rectangle.lineStyle(8, strokeWidth, 1);
+        !empty && rectangle.beginFill(color);
+        rectangle.drawRect(0, 0, width, height);
+        !empty && rectangle.endFill();
+        const texture = app.renderer.generateTexture(rectangle);
+        this.sprite = new PIXI.Sprite(texture);
+        this.sprite.x = x;
+        this.sprite.y = y;
+        return this;
+    }
+
     rotate(deg, pivotX = undefined, pivotY = undefined) {
         if (!this.sprite) {
             throw new Error("No sprites specified.");
@@ -274,6 +339,10 @@ class PixiDrawing {
     done() {
         this.container.addChild(this.sprite);
     }
+
+    getSprite() {
+        return this.sprite;
+    }
 }
 
 const pixiDrawing = new PixiDrawing();
@@ -282,6 +351,14 @@ catImage.addEventListener("load", () => {
     const catBase = new PIXI.BaseTexture.from(catImage);
     /*drawImage(container1, catBase, 0, 0, catBase.width, catBase.height, 10, 10, catBase.width, catBase.height, 60, "center");
     app.stage.addChild(container1);*/
-    pixiDrawing.on(container1).drawImage(catBase).clip(10, 0, 30, 50).resize(100, 90).move(100, 100).rotate(55, "center").done();
+    pixiDrawing
+        .on(container1)
+        .drawImage(catBase)
+        .clip(10, 0, 30, 50)
+        .resize(100, 90)
+        .move(100, 100)
+        .rotate(55, "center")
+        .done();
+    pixiDrawing.on(container1).drawRect(300, 250, 500).done();
     app.stage.addChild(container1);
 });
